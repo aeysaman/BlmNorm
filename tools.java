@@ -132,4 +132,23 @@ public class tools {
 		}
 		return year *10 + qrt;
 	}
+	static double calc(List<StatsDatum> ls, String ratio, boolean squared){
+		List<Double> dubs = new ArrayList<Double>();
+		for(StatsDatum x : ls){
+			dubs.add( x.getVal(ratio));
+		}
+		return calcD(dubs, ratio, squared);
+	}
+	static double calcD(List<Double> ls, String ratio, boolean squared){
+		double result = 0;
+		int count = 0;
+		for(Double x : ls){
+			count++;
+			if(squared)
+				x *=x;
+			result +=x;
+		}
+		result /= count;
+		return result;
+	}
 }

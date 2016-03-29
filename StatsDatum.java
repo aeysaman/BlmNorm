@@ -8,7 +8,8 @@ public class StatsDatum {
 	public String sDate;
 	public double date;
 	private Map<String, Double> rawValues;
-	private Map<String, Double> normValues;
+	private Map<String, Double> normTimeValues;
+	private Map<String, Double> normAllValues;
 	private Map<String, Double> returns;
 	private StatsNormalization funct;
 	public StatsDatum(StatsNormalization funct, String security,String sDate, double date){
@@ -17,7 +18,8 @@ public class StatsDatum {
 		this.sDate = sDate;
 		this.date = date;
 		this.rawValues = new HashMap<String, Double>();
-		this.normValues = new HashMap<String, Double>();
+		this.normTimeValues = new HashMap<String, Double>();
+		this.normAllValues = new HashMap<String, Double>();
 		this.returns = new HashMap<String, Double>();
 	}
 	public Double getVal(String s){
@@ -26,8 +28,6 @@ public class StatsDatum {
 		return rawValues.get(s);
 	}
 	public boolean hasVal(String s){
-		//if(!rawValues.containsKey(s))
-		//	return false;
 		return rawValues.get(s)!=null;
 	}
 	public void setVal(String s, Double d){
@@ -36,21 +36,36 @@ public class StatsDatum {
 	public void enterRatio(Double d, String s){
 		this.rawValues.put(s,d);
 	}
-	public void enterNorm(Double d, String s){
-		this.normValues.put(s,d);
+	public void enterTimeNorm(Double d, String s){
+		this.normTimeValues.put(s,d);
+	}
+	public void enterAllNorm(Double d, String s){
+		this.normAllValues.put(s,d);
+	}
+	public void enterNorm(Double d, String s, char type){
+		switch(type){
+			case 't': 
+				this.normTimeValues.put(s,d); break;
+			case 'a': 
+				this.normAllValues.put(s,d); break;	
+			default:
+				System.out.println("invalid char");
+		}
+		
 	}
 	public void enterReturn(Double d,String s){
 		this.returns.put(s,d);
 	}
-	//n -> normValues, r -> rawValues, t -> returns
+	//t -> normTimeValues, a-> normAllValues w -> rawValues, r -> returns
 	public List<String> exportData(List<String> index, char code){
 		List<String> result = new ArrayList<String>();
 		for(int i = 0; i<index.size(); i++){
 			try{
 				String x = 	Double.toString(
-						code == 'n' ? normValues.get(index.get(i)):
-						code == 'r' ? rawValues.get(index.get(i)):
-						code == 't' ? returns.get(index.get(i)) :
+						code == 't' ? normTimeValues.get(index.get(i)):
+						code == 'a' ? normAllValues.get(index.get(i)):
+						code == 'w' ? rawValues.get(index.get(i)):
+						code == 'r' ? returns.get(index.get(i)) :
 						null);
 				result.add(x);
 			}
