@@ -1,3 +1,4 @@
+package norm;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -8,12 +9,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import gather.tools;
+
 public class StatsNormalization {
 	private List<String> index;
 	private List<String> ratioIndex;
 	private List<String> returnIndex;
 	private Map<Double,List<StatsDatum>> data;
 	private double limit = .5;
+	@SuppressWarnings("unused")
 	private double stopAt = 2;
 	public static void main(String[] args) {
 		StatsNormalization funct = new StatsNormalization();
@@ -175,6 +179,7 @@ public class StatsNormalization {
 	public int getI(String s){
 		return index.indexOf(s);
 	}
+	@SuppressWarnings("unused")
 	private List<StatsDatum> cleanList(List<StatsDatum> list, String ratio, double mean, double stdev) {
 		List<StatsDatum> result = new ArrayList<StatsDatum>();
 		double uLim = mean + stdev * limit;

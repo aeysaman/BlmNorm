@@ -1,3 +1,4 @@
+package norm;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ public class StatsDatum {
 	private Map<String, Double> normTimeValues;
 	private Map<String, Double> normAllValues;
 	private Map<String, Double> returns;
+	@SuppressWarnings("unused")
 	private StatsNormalization funct;
 	public StatsDatum(StatsNormalization funct, String security,String sDate, double date){
 		this.funct = funct;
