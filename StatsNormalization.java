@@ -1,3 +1,5 @@
+package normalization;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -24,7 +26,7 @@ public class StatsNormalization {
 		System.out.println("normalizing All");
 		funct.normalizeAll();
 		System.out.println("printing");
-		funct.printData(new File("cleanedData.csv"));
+		funct.printData(new File("normedData.csv"));
 		System.out.println("all done");
 	}
 	private void normalizeTimes() {
