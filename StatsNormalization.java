@@ -10,13 +10,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import general.Datum;
+import general.Read;
+import general.Tools;
+
 public class StatsNormalization {
-	private List<String> index;
 	private List<String> ratioIndex;
 	private List<String> returnIndex;
-	private Map<Double,List<StatsDatum>> data;
-	private double limit = .5;
-	private double stopAt = 2;
+	private Map<Integer,List<Datum>> data;
+	
+	private final double percentClip = .05;
+	
 	public static void main(String[] args) {
 		StatsNormalization funct = new StatsNormalization();
 		System.out.println("reading");
@@ -29,52 +33,53 @@ public class StatsNormalization {
 		funct.printData(new File("normedData.csv"));
 		System.out.println("all done");
 	}
+	public StatsNormalization(){
+		ratioIndex = new ArrayList<String>();
+		returnIndex = new ArrayList<String>();
+	}
 	private void normalizeTimes() {
-		for(Double t: data.keySet()){
-			for(String ratio: ratioIndex){
-				normalize(data.get(t), ratio, 't');
-			}
-		}
+		for(Integer t: data.keySet())
+			for(String ratio: ratioIndex)
+				normalize(data.get(t), ratio, "time");
 	}
 	private void normalizeAll() {
-		List<StatsDatum> all = new ArrayList<StatsDatum>();
-		for(List<StatsDatum> x: data.values())
+		List<Datum> all = new ArrayList<Datum>();
+		for(List<Datum> x: data.values())
 			all.addAll(x);
 		
-		for(String ratio: ratioIndex){
-			normalize(all, ratio, 'a');
-		}
+		for(String ratio: ratioIndex)
+			normalize(all, ratio, "all");
 	}
-	private void normalize(List<StatsDatum> dirtyList, String ratio, char type) {
-		List<StatsDatum> list = removeNulls(dirtyList, ratio);
+	private void normalize(List<Datum> dirtyList, String ratio, String type) {
+		List<Datum> list = removeNulls(dirtyList, ratio);
 		
 		double median = calcMedian(list, ratio);
 		double stdev = calcAdjStDev(list, ratio);
 				
-		for(StatsDatum s : removeNulls(dirtyList, ratio)){
-			Double x = s.getVal(ratio);
-			x= mathify(x, median, stdev *.75);
-			s.enterNorm(x, ratio, type);
+		for(Datum s : removeNulls(dirtyList, ratio)){
+			Double x = s.getValue(ratio);
+			x= mathify(x, median, stdev);
+			s.enterValue(ratio + "_" + type, x);
 		}
 	}
-	private List<StatsDatum> removeNulls(List<StatsDatum> list, String ratio) {
-		List<StatsDatum> result = new ArrayList<StatsDatum>();
-		for(StatsDatum x: list){
-			if(x.hasVal(ratio))
+	private List<Datum> removeNulls(List<Datum> list, String ratio) {
+		List<Datum> result = new ArrayList<Datum>();
+		for(Datum x: list){
+			if(x.hasValue(ratio))
 				result.add(x);
 		}
 		return result;
 	}
-	private double calcAdjStDev(List<StatsDatum> ls, String ratio){
+	private double calcAdjStDev(List<Datum> ls, String ratio){
 		List<Double> result = new ArrayList<Double>();
-		for(StatsDatum s : ls)
-			result.add(s.getVal(ratio));
+		for(Datum s : ls)
+			result.add(s.getValue(ratio));
 		Collections.sort(result);
 		int n = result.size();
-		List<Double> shorter = result.subList(n/50, 49*n /50);
+		List<Double> shorter = result.subList((int)(n * percentClip), (int)(n *(1-percentClip)));
 		
-		double mean = tools.calcD(shorter, ratio, false);
-		double stdev = Math.sqrt(tools.calcD(shorter, ratio, true) - mean *mean);
+		double mean = Tools.calcD(shorter, ratio, false);
+		double stdev = Math.sqrt(Tools.calcD(shorter, ratio, true) - mean *mean);
 		return stdev;
 	}
 	private double mathify(double x, double center, double stdev){
@@ -82,10 +87,10 @@ public class StatsNormalization {
 		double answer = 2/(1+ Math.exp(-result)) - 1;
 		return answer;
 	}
-	private double calcMedian(List<StatsDatum> ls, String ratio){
+	private double calcMedian(List<Datum> ls, String ratio){
 		List<Double> result = new ArrayList<Double>();
-		for(StatsDatum s : ls)
-			result.add(s.getVal(ratio));
+		for(Datum s : ls)
+			result.add(s.getValue(ratio));
 		Collections.sort(result);
 		int mid = result.size()/2;
 		if(result.size()%2 ==1)
@@ -93,98 +98,47 @@ public class StatsNormalization {
 		else
 			return (result.get(mid-1) + result.get(mid))/2.0;
 	}
-	public StatsNormalization(){
-		index = new ArrayList<String>();
-		ratioIndex = new ArrayList<String>();
-		returnIndex = new ArrayList<String>();
-	}
+	
 	public void printData(File f){
 		try{
 			BufferedWriter fileWriter = new BufferedWriter(new FileWriter(f));
-			fileWriter.write("Security,Date,DateNum," + String.join(",", returnIndex) + "," + String.join("_time,", ratioIndex)+ "_time," + String.join("_all,", ratioIndex) +"_all\n");
-			for(List<StatsDatum> foo: data.values()){
-				for(StatsDatum bar : foo){
-					List<String> rtn = bar.exportData(returnIndex,'r');
-					List<String> ratTime = bar.exportData(ratioIndex,'t');
-					List<String> ratAll = bar.exportData(ratioIndex,'a');
-					fileWriter.write(String.join(",", bar.exportInfo()) +"," +String.join(",", rtn) +"," +String.join(",", ratTime)+"," +String.join(",", ratAll)+ "\n");
+			fileWriter.write(String.format("Security,Date,%s,%s,%s\n",String.join(",", returnIndex), String.join("_time,", ratioIndex)+ "_time,",String.join("_all,", ratioIndex) +"_all"));
+			for(List<Datum> foo: data.values())
+				for(Datum bar : foo){
+					String rtn = bar.exportDataJoined(returnIndex);
+					String time = bar.exportDataJoined(Tools.appendStringToList(ratioIndex,"time"));
+					String all = bar.exportDataJoined(Tools.appendStringToList(ratioIndex,"all"));
+					fileWriter.write(String.format("%s,%s,%s,%s,%s\n", bar.name, bar.date,rtn,time,all));
 				}
-			}
 			fileWriter.close();
 		}
 		catch(Exception e){
-			tools.exceptionEnd("error in printing", e);
+			Tools.exceptionEnd("error in printing", e);
 		}
 	}
 	public void readData(File f){
-		Scanner scan = tools.openScan(f);
-		Map<Double, List<StatsDatum>> result = new HashMap<Double, List<StatsDatum>>();
+		Scanner scan = Read.openScan(f);
+		Map<Integer, List<Datum>> result = new HashMap<Integer, List<Datum>>();
 		
-		//read top line
-		List<String> topLine = readLine(scan.nextLine());
-		this.index = topLine;
+		List<String> topLine = Read.readTopLine(scan.nextLine());
 		parseColumns(topLine);
 		
-		//loop through data
 		while(scan.hasNextLine()){
-			List<String> line = readLine(scan.nextLine());
-			StatsDatum x = createStatsDatum(line);
-			enterIntoMap(result, x);
+			Datum foo = Datum.createDatum(scan.nextLine(), topLine, "yyyy/mm/dd");
+
+			if(!result.containsKey(foo.getDateNumQrt()))
+				result.put(foo.getDateNumQrt(), new ArrayList<Datum>());
+			result.get(foo.getDateNumQrt()).add(foo);
 		}
 		this.data = result;
 	}
-	private void enterIntoMap(Map<Double, List<StatsDatum>> map, StatsDatum x){
-		if(!map.containsKey(x.date))
-			map.put(x.date, new ArrayList<StatsDatum>());
-		map.get(x.date).add(x);
-	}
+	//builds the return and ratio indexes
 	private void parseColumns(List<String> index){
-		for(int i = 3; i<index.size(); i++){
-			String s = index.get(i);
+		for(String s: index){
 			if(s.contains("Forward") || s.contains("Premium"))
 				returnIndex.add(s);
-			else if(!s.equals("Price"))
+			else if(!(s.contains("Date") || s.contains("Security")|| s.contains("DateNum") || s.contains("Price")))
 				ratioIndex.add(s);
 		}
-	}
-	private StatsDatum createStatsDatum(List<String> line) {
-		String sec = line.get(this.getI("Security"));
-		String sDate = line.get(this.getI("Date"));
-		double date = Double.parseDouble(line.get(this.getI("DateNum")));
-		StatsDatum datum = new StatsDatum(this,sec,sDate,date);
-		
-		for(int i = 3; i<index.size(); i++){
-			String s = index.get(i);
-			String x = line.get(i);
-			Double d = null;
-			if(!x.equals("null"))
-				d = Double.parseDouble(x);
-			if(ratioIndex.contains(s))
-				datum.enterRatio(d, s);
-			if(returnIndex.contains(s))
-				datum.enterReturn(d, s);
-			
-		}
-		return datum;
-	}
-	public List<String> readLine(String s){
-		String[] foo = s.split(",");
-		List<String> bar = new ArrayList<String>();
-		for(int i = 0; i<foo.length; i++)
-			bar.add(foo[i]);
-		return bar;
-	}
-	public int getI(String s){
-		return index.indexOf(s);
-	}
-	private List<StatsDatum> cleanList(List<StatsDatum> list, String ratio, double mean, double stdev) {
-		List<StatsDatum> result = new ArrayList<StatsDatum>();
-		double uLim = mean + stdev * limit;
-		double lLim = mean - stdev * limit;
-		for(StatsDatum x : list){
-			if(!(x.getVal(ratio)>uLim) &&!(x.getVal(ratio)<lLim))
-				result.add(x);
-		}
-		return result;
 	}
 }
